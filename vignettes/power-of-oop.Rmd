@@ -1,0 +1,162 @@
+---
+title: "The Power of OOP"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{power-of-oop}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(s3examples)
+```
+
+R is traditionally a functional programming language, meaning that when we code
+in R, we tend to think in terms of functions. For instance, given a data set,
+what function can I create to plot a certain variable? Object oriented
+programming introduces the concept of "classes." Classes are used extensively in
+other programming languages such as Java and are fascinating as they can
+enforce a specific structure or behavior of an object.
+
+## An Example Use Case
+
+In some instances, in R, you might want to create a function that works for a
+specific type of data format. Perhaps there you are interested in a specific 
+column and want to ensure your data has this column present. For instance,
+let us take a look at the following dataset.
+
+```{r example data, echo = FALSE}
+ref_file <- miplicorn::miplicorn_example("reference_AA_table.csv")
+alt_file <- miplicorn::miplicorn_example("alternate_AA_table.csv")
+cov_file <- miplicorn::miplicorn_example("coverage_AA_table.csv")
+
+data <- miplicorn::read_tbl_ref_alt_cov(
+  ref_file,
+  alt_file,
+  cov_file,
+  gene == "atp6" | gene == "crt"
+)
+
+data
+```
+
+Let us say we want to create a function `mutation_prevalence` which determines
+the prevalence of each mutation in the dataset. We additionally wanted to plot
+this function.
+
+```{r mutation prev}
+prevalence <- mutation_prevalence(data, 5)
+prevalence
+```
+
+While creating this function may require some thought, it makes intuitive sense
+that the result will contain four columns as seen above. Two of these columns,
+`n_total` and `n_mutant`, are used to compute the final column, `prevalence`. 
+Therefore, if we wanted to visualize or data, it is not very important for us
+to consider the two columns `n_total` and `n_mutant`. Rather, we care about
+the `mutation_name` and the `prevalence`.
+
+If we were to create an function, `plot_prevalence`, the easiest way to code it
+would be to give the function a `data` argument:
+
+```{r basic fn, eval = FALSE}
+plot_prevalence <- function(data) {
+  # code for plotting goes here
+}
+```
+
+Notice that in the given format, we could feed any dataset into our function.
+In other words, there are no checks to make sure we are feeding in the output
+of `mutation_prevalence()`. There are a couple of strategies we could employ to
+solve this issue.
+
+First, we could check that some key columns exist.
+
+```{r key columns, eval = FALSE}
+plot_prevalence <- function(data) {
+  if (!"mutation_name" %in% colnames(data)) {
+    stop("Missing key column!", call. = FALSE)
+  }
+  
+  # code for plotting goes here
+}
+```
+
+Another strategy would be to use classes! If we assigned a class `mut_prev` to
+the output of `mutation_prevalence()`, we could easily check if the input is of
+type `mut_prev`.
+
+```{r class check, eval = FALSE}
+plot_prevalence <- function(data) {
+  if (!inherits(data, "mut_prev")) {
+    stop("Wrong class input!", call. = FALSE)
+  }
+  
+  # code for plotting goes here
+}
+```
+
+## But Wait, There's More!
+
+Now while using classes to solve this issue might seem like a bit of overkill.
+After all, why create an entire new class when you can just have an `if()`
+statement? The real power of object-oriented programming is the ability to use
+**polymorphism**^[The term polymorphism has been taken from [Advanced
+R](https://adv-r.hadley.nz/oo.html#oop-systems).]. What we mean by this is the
+ability to use the same function for many types of input. An example of this
+behavior is the base R function `print()` which behaves differently depending on
+what it is printing.
+
+```{r print behavior}
+print(c(1, 2))
+
+print(tibble::as_tibble(c(1, 2)))
+```
+
+Using OOP, the developer can customize how certain functions behave on certain
+objects. Revisiting our `mut_prev` class, we could even change the way the table
+is printed! Another common example is plotting a dataset. Say we have developed
+a package that introduces three different type of datasets. We can then create
+a plot method for each type of class.
+
+```{r print methods, eval = FALSE}
+plot.class1 <- function(x) {
+  # plotting code
+}
+
+plot.class2 <- function(x) {
+  # plotting code
+}
+
+plot.class3 <- function(x) {
+  # plotting code
+}
+```
+
+Revisiting our class, `mut_prev`, when we call `plot()` it creates a custom plot
+specific to only our class!
+
+```{r plot class}
+plot(prevalence)
+```
+
+## Additional Reading
+
+There is a lot more to the world of OOP and many important packages leverage
+various OOP techniques. In fact, in R, there are even multiple OOP systems. For
+example, the [Tidyverse](https://www.tidyverse.org/) is built using the S3
+system whereas the [Bioconductor project](https://www.bioconductor.org/) uses
+S4. Of all the available systems, S3 is regarded as the easiest system to learn.
+
+To learn more about OOP, I would highly recommend reading the OOP chapter of
+[Advanced R](https://adv-r.hadley.nz/oo.html) and visiting some of the articles
+in the [`{vctrs}` package](https://vctrs.r-lib.org/articles/s3-vector.html). The
+code for this post can be found in my [`{s3examples}` package]() where I have
+written a simple S3 subclass of the `tibble()` subclass.
