@@ -6,7 +6,7 @@
     vctrs::s3_register(
       "dplyr::dplyr_reconstruct",
       "mut_prev",
-      method = mut_prev_reconstructable
+      method = mut_prev_reconstruct
     )
   }
   invisible()
